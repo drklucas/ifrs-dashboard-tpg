@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tarefas Moodle - TPG/IFRS</title>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #252830;
+      --surface3: #2f323c;
+      --border: #363944;
+      --text: #e4e5e9;
+      --text-secondary: #9ca0ae;
+      --text-dim: #6b7084;
+      --accent: #6c9cfc;
+      --red: #f87171;
+      --red-dim: #f8717122;
+      --orange: #fb923c;
+      --orange-dim: #fb923c22;
+      --yellow: #fbbf24;
+      --yellow-dim: #fbbf2422;
+      --green: #4ade80;
+      --green-dim: #4ade8022;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+
+    .app {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      grid-template-rows: auto 1fr;
+      gap: 0;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .topbar h1 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .topbar .meta {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    .main {
+      padding: 24px 28px;
+      overflow-y: auto;
+    }
+
+    .sidebar {
+      border-left: 1px solid var(--border);
+      padding: 24px 20px;
+      overflow-y: auto;
+      background: var(--surface);
+    }
+
+    @media (max-width: 1080px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+      }
+      .sidebar {
+        border-left: none;
+        border-top: 1px solid var(--border);
+      }
+    }
+
+    /* ── Tab Bar ── */
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 7px 18px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .tab:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .tab .count {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: rgba(255,255,255,0.15);
+    }
+
+    .tab:not(.active) .count {
+      background: var(--surface3);
+      color: var(--text-dim);
+    }
+
+    /* ── Search ── */
+
+    .search-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .search-input:focus { border-color: var(--accent); }
+
+    /* ── To-Do Items ── */
+
+    .todo-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .todo-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      transition: background 0.12s;
+      cursor: default;
+    }
+
+    .todo-item:hover { background: var(--surface); }
+
+    .todo-body { flex: 1; min-width: 0; }
+
+    .todo-title {
+      font-size: 0.9rem;
+      font-weight: 500;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .todo-title a {
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .todo-title a:hover { color: var(--accent); text-decoration: underline; }
+
+    .todo-urgency {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      flex-shrink: 0;
+    }
+
+    .urgency-past { background: var(--surface3); color: var(--text-dim); }
+    .urgency-today { background: var(--red-dim); color: var(--red); }
+    .urgency-tomorrow { background: var(--orange-dim); color: var(--orange); }
+    .urgency-soon { background: var(--orange-dim); color: var(--orange); }
+    .urgency-week { background: var(--yellow-dim); color: var(--yellow); }
+    .urgency-later { background: var(--green-dim); color: var(--green); }
+
+    .todo-meta {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      margin-top: 2px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .todo-deadline {
+      font-size: 0.8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      margin-top: 2px;
+      padding-left: 8px;
+      flex-shrink: 0;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 16px;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    /* ── Section headers ── */
+
+    .section-header {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      padding: 16px 0 8px 14px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+
+    .section-header:first-child { padding-top: 0; }
+
+    /* ── Materials ── */
+
+    .materials-group {
+      margin-bottom: 20px;
+    }
+
+    .materials-group h3 {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: 12px 0 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 6px;
+    }
+
+    .material-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      transition: background 0.12s;
+    }
+
+    .material-item:hover { background: var(--surface); }
+
+    .material-icon {
+      font-size: 0.85rem;
+      width: 20px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .material-name {
+      font-size: 0.85rem;
+      flex: 1;
+    }
+
+    .material-name a {
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+
+    .material-name a:hover { color: var(--accent); }
+
+    /* ── Calendar sidebar ── */
+
+    .sidebar h2 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+    }
+
+    .fc {
+      --fc-bg-event-opacity: 0.9;
+      --fc-border-color: var(--border);
+      --fc-page-bg-color: var(--surface);
+      --fc-neutral-bg-color: var(--surface2);
+      --fc-today-bg-color: rgba(108, 156, 252, 0.08);
+      --fc-event-text-color: #fff;
+    }
+
+    .fc .fc-toolbar { margin-bottom: 8px !important; }
+    .fc .fc-toolbar-title { color: var(--text); font-size: 0.9rem !important; }
+    .fc .fc-button {
+      background: var(--surface2) !important;
+      border-color: var(--border) !important;
+      color: var(--text-secondary) !important;
+      font-size: 0.75rem !important;
+      padding: 2px 8px !important;
+    }
+    .fc .fc-button:hover { background: var(--surface3) !important; }
+    .fc .fc-button-active { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
+    .fc th { color: var(--text-dim); font-size: 0.7rem; padding: 4px 0 !important; }
+    .fc td { border-color: var(--border); }
+    .fc .fc-daygrid-day-number { color: var(--text-secondary); font-size: 0.75rem; padding: 2px 4px !important; }
+    .fc .fc-col-header-cell { background: var(--surface2); }
+    .fc .fc-daygrid-day-frame { min-height: 48px !important; }
+    .fc .fc-event { font-size: 0.65rem !important; padding: 1px 3px !important; border-radius: 3px !important; }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 6px 10px;
+      margin: 14px 0 0;
+      font-size: 0.72rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-dim);
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .legend-item span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    @media (max-width: 800px) {
+      .legend {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Scrollbars ── */
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <h1>Tarefas Moodle - TPG/IFRS</h1>
+      <span class="meta">Atualizado em 07/04/2026 às 16:24</span>
+    </div>
+
+    <div class="main">
+      <div class="tabs" id="tabs"></div>
+
+      <div class="search-row">
+        <input type="text" class="search-input" id="searchInput" placeholder="Buscar atividade ou materia...">
+      </div>
+
+      <div id="listContainer"></div>
+    </div>
+
+    <div class="sidebar">
+      <h2>Calendario</h2>
+      <div id="calendar"></div>
+      <div class="legend" id="calendarLegend"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales/pt-br.global.min.js"></script>
+  <script>
+    const DATA = {"last_updated": "2026-04-07T16:24:07", "courses": [{"id": "3202", "name": "Cadeia de Suprimentos", "url": "https://moodle.osorio.ifrs.edu.br/course/view.php?id=3202", "activities": [{"name": "Fórum de notícias", "type": "forum", "url": "https://moodle.osorio.ifrs.edu.br/mod/forum/view.php?id=240296", "due_date": null, "status": "unknown"}, {"name": "Cadeia de suprimentos", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=240297", "due_date": null, "status": "unknown"}, {"name": "Atividade 1 - Identificação e desenho de uma cadeia de suprimentos", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=240303", "due_date": "2026-03-23T00:00:00", "status": "unknown"}, {"name": "Atividade 2 - Questões para estudo", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=240298", "due_date": "2026-03-23T00:00:00", "status": "unknown"}, {"name": "A REVOLUÇÃO NO MERCADO DE ENTREGAS – COMO O E-COMMERCE ESTÁ TRANSFORMANDO A LOGÍSTICA BRASILEIRA", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=240301", "due_date": null, "status": "unknown"}, {"name": "AMAZON: A HISTÓRIA E AS LIÇÕES DE NEGÓCIOS DA MAIORVAREJISTA DO MUNDO", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=240302", "due_date": null, "status": "unknown"}, {"name": "Artigo para leitura - \"Conectando com o sucesso: estudo de caso empresa Amazon.com\"", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=240299", "due_date": null, "status": "unknown"}, {"name": "Questões: estudo de caso da empresa Amazon.com", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=240300", "due_date": "2026-03-23T00:00:00", "status": "unknown"}, {"name": "Texto base: Processamento de Pedidos", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=241448", "due_date": null, "status": "unknown"}, {"name": "Estudo de Caso - atividade: Otimização do Fluxo de Pedidos em uma Indústria de EPIs", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=241449", "due_date": null, "status": "unknown"}, {"name": "3. ATIVIDADE: Elaborar um Fluxograma de Processo Funcional que represente visualmente essa jornada.", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=241450", "due_date": "2026-03-30T00:00:00", "status": "unknown"}, {"name": "Modelo de Fluxograma Funcional", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=241451", "due_date": null, "status": "unknown"}, {"name": "Vídeo: Como a AMAZON processa e entrega os produtos - Veja como funciona um armazém da Amazon", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=242639", "due_date": null, "status": "unknown"}, {"name": "Logística de Transportes - Slides", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=242637", "due_date": null, "status": "unknown"}, {"name": "ROTEIRO DE TRABALHO EM GRUPO: PAINEL ESTRATÉGICO DE MODAIS DE TRANSPORTE", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=242636", "due_date": "2026-04-09T00:00:00", "status": "unknown"}, {"name": "Modelo de Trabalho - IFRS (template)", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=242638", "due_date": null, "status": "unknown"}]}, {"id": "3115", "name": "Marketing II_2026", "url": "https://moodle.osorio.ifrs.edu.br/course/view.php?id=3115", "activities": [{"name": "Fórum de notícias", "type": "forum", "url": "https://moodle.osorio.ifrs.edu.br/mod/forum/view.php?id=234013", "due_date": null, "status": "unknown"}, {"name": "Fórum dúvidas", "type": "forum", "url": "https://moodle.osorio.ifrs.edu.br/mod/forum/view.php?id=234016", "due_date": null, "status": "unknown"}, {"name": "Fórum de notícias", "type": "forum", "url": "https://moodle.osorio.ifrs.edu.br/mod/forum/view.php?id=234017", "due_date": null, "status": "unknown"}, {"name": "Encontros Síncronos", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=234018", "due_date": null, "status": "unknown"}, {"name": "Plano de Ensino Marketing II 2026", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=234426", "due_date": null, "status": "unknown"}, {"name": "1.3. Estratégia de segmentação", "type": "page", "url": "https://moodle.osorio.ifrs.edu.br/mod/page/view.php?id=25305", "due_date": null, "status": "unknown"}, {"name": "Unidade I Itens 1 a 1.4", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=234427", "due_date": null, "status": "unknown"}, {"name": "Material de Apoio de MKT Unidades I e II", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=234023", "due_date": null, "status": "unknown"}, {"name": "Exercícios de Fixação 1", "type": "quiz", "url": "https://moodle.osorio.ifrs.edu.br/mod/quiz/view.php?id=234025", "due_date": "2026-03-24T23:59:00", "status": "unknown"}, {"name": "Exemplo de trabalho Segmentação", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=234027", "due_date": null, "status": "unknown"}, {"name": "Vídeo aula sobre Segmentação de Mercado", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=234029", "due_date": null, "status": "unknown"}, {"name": "Exercício de fixação 2", "type": "quiz", "url": "https://moodle.osorio.ifrs.edu.br/mod/quiz/view.php?id=234031", "due_date": "2026-05-05T23:59:00", "status": "unknown"}, {"name": "Trabalho sobre Segmentação - Posicionamento (Insira aqui)", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=234032", "due_date": "2026-05-05T23:55:00", "status": "unknown"}, {"name": "Exercício de fixação 3", "type": "quiz", "url": "https://moodle.osorio.ifrs.edu.br/mod/quiz/view.php?id=62783", "due_date": null, "status": "unknown"}, {"name": "Unidade II Itens 2.1. a 2.4", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=234034", "due_date": null, "status": "unknown"}, {"name": "Exercício de fixação 3", "type": "quiz", "url": "https://moodle.osorio.ifrs.edu.br/mod/quiz/view.php?id=234036", "due_date": "2026-05-05T23:59:00", "status": "unknown"}, {"name": "2.3.A migração para o marketing de relacionamento e 2.4. Fidelização - Acesse o link:", "type": "page", "url": "https://moodle.osorio.ifrs.edu.br/mod/page/view.php?id=234039", "due_date": null, "status": "unknown"}, {"name": "Exercício avaliativo - Preparativo para prova", "type": "quiz", "url": "https://moodle.osorio.ifrs.edu.br/mod/quiz/view.php?id=234041", "due_date": "2026-05-05T19:00:00", "status": "unknown"}, {"name": "Video aula sobre Fidelização de clientes - Acesse o link:", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=234043", "due_date": null, "status": "unknown"}, {"name": "Exercício de fixação 4 – sendo 5 questões de múltipla escolha (1 a 5) e 5 questões de V ou F (6 a 10)", "type": "quiz", "url": "https://moodle.osorio.ifrs.edu.br/mod/quiz/view.php?id=25340", "due_date": null, "status": "unknown"}, {"name": "Unidade III Itens 3 e 4 O Sistema 4Ps e Gestão de Marcas", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=234045", "due_date": null, "status": "unknown"}, {"name": "Exercício de fixação 4", "type": "quiz", "url": "https://moodle.osorio.ifrs.edu.br/mod/quiz/view.php?id=234047", "due_date": "2026-06-23T23:59:00", "status": "unknown"}, {"name": "O Sistema 4 Ps no Marketing", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=234049", "due_date": null, "status": "unknown"}, {"name": "Artigo: Branding (Gestão de Marcas): o que é, importância e exemplos - Acesse o link:", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=234050", "due_date": null, "status": "unknown"}, {"name": "O que é Gestão de Marca ou Branding - Acesse o link:", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=234051", "due_date": null, "status": "unknown"}, {"name": "Case: Reposicionamento de Marca - Natura", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=234052", "due_date": null, "status": "unknown"}, {"name": "Case de reposicionamento de marca | branding: Havaianas", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=234053", "due_date": null, "status": "unknown"}, {"name": "Anexe o Exercício : Unidade III: Composto Mercadológico – 3. O sistema de marketing e os “4 Ps\"", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=234054", "due_date": "2025-05-06T23:55:00", "status": "unknown"}]}, {"id": "3082", "name": "Economia II", "url": "https://moodle.osorio.ifrs.edu.br/course/view.php?id=3082", "activities": [{"name": "Fórum de notícias", "type": "forum", "url": "https://moodle.osorio.ifrs.edu.br/mod/forum/view.php?id=231479", "due_date": null, "status": "unknown"}, {"name": "Plano de Ensino (versão preliminar)", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=231542", "due_date": null, "status": "unknown"}, {"name": "Anotações I", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=231482", "due_date": null, "status": "unknown"}, {"name": "Artigo 1 - Conceito de desenvolvimento", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=231484", "due_date": null, "status": "unknown"}, {"name": "Artigo 2 - Balanço do neoliberaismo", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=231485", "due_date": null, "status": "unknown"}, {"name": "Tarefa 1 - Questionário A (Cap. 1)", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=231487", "due_date": "2026-03-11T00:00:00", "status": "unknown"}, {"name": "Tarefa 1b - Questionário B (Cap. 7)", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=231488", "due_date": "2026-03-25T00:00:00", "status": "unknown"}, {"name": "Tarefa 2 - Questionário C (FHC)", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=231489", "due_date": "2026-04-08T00:00:00", "status": "unknown"}, {"name": "Tarefa 3 - Questionário D (neoliberalismo)", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=231490", "due_date": "2026-04-15T00:00:00", "status": "unknown"}]}, {"id": "3079", "name": "OSO-GPO001 - GESTÃO DA PRODUÇÃO E OPERAÇÕES", "url": "https://moodle.osorio.ifrs.edu.br/course/view.php?id=3079", "activities": [{"name": "Fórum de notícias", "type": "forum", "url": "https://moodle.osorio.ifrs.edu.br/mod/forum/view.php?id=231372", "due_date": null, "status": "unknown"}, {"name": "Evolução da Administração da Produção - um pouco de história", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=238760", "due_date": null, "status": "unknown"}, {"name": "Tipos de sistemas de produção", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=239645", "due_date": null, "status": "unknown"}, {"name": "Planejamento e controle da produção para a competitividade", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=239687", "due_date": null, "status": "unknown"}, {"name": "Atividade 1: Estratégia de produção - desempenho", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=240275", "due_date": "2026-03-23T23:55:00", "status": "unknown"}, {"name": "Atividade 2: Tipos de processo de produção com relação ao volume e variedade", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=240276", "due_date": "2026-03-23T23:55:00", "status": "unknown"}, {"name": "Projeto de produto", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=241277", "due_date": null, "status": "unknown"}, {"name": "Atividade 3- Ciclo de vida do produto", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=241278", "due_date": "2026-03-28T00:00:00", "status": "unknown"}, {"name": "Atividade 4: Estrutura do produto", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=241279", "due_date": "2026-03-28T00:00:00", "status": "unknown"}, {"name": "Tipos de Arranjo Físico ou Layout", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=242664", "due_date": null, "status": "unknown"}]}, {"id": "3058", "name": "ESTATÍSTICA APLICADA", "url": "https://moodle.osorio.ifrs.edu.br/course/view.php?id=3058", "activities": [{"name": "Fórum dúvidas", "type": "forum", "url": "https://moodle.osorio.ifrs.edu.br/mod/forum/view.php?id=230286", "due_date": null, "status": "unknown"}, {"name": "Lista de funções das planilhas do Google", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=230289", "due_date": null, "status": "unknown"}, {"name": "Fórum de notícias", "type": "forum", "url": "https://moodle.osorio.ifrs.edu.br/mod/forum/view.php?id=230356", "due_date": null, "status": "unknown"}, {"name": "VÍDEO - TED - Por que devemos amar as estatísticas", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=230294", "due_date": null, "status": "unknown"}, {"name": "VÍDEO - TED - Ensinem estatística antes de cálculo", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=230295", "due_date": null, "status": "unknown"}, {"name": "Estatística no Cinema: O Homem que Mudou o Jogo", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=230297", "due_date": null, "status": "unknown"}, {"name": "Verificação de Aprendizagem Nº 1 - Prazo: 12/4", "type": "quiz", "url": "https://moodle.osorio.ifrs.edu.br/mod/quiz/view.php?id=230304", "due_date": "2026-04-12T23:59:00", "status": "unknown"}, {"name": "Verificação de Aprendizagem Nº 2 - Prazo: 12/4", "type": "quiz", "url": "https://moodle.osorio.ifrs.edu.br/mod/quiz/view.php?id=230306", "due_date": "2026-04-12T23:55:00", "status": "unknown"}, {"name": "1ª ATIVIDADE AVALIATIVA - Estudo de Caso - Prazo: 5/6", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=230310", "due_date": null, "status": "unknown"}, {"name": "1º ATIVIDADE AVALIATIVA - Entrega - Estudo de Caso - Prazo: 5/6", "type": "assignment", "url": "https://moodle.osorio.ifrs.edu.br/mod/assign/view.php?id=230311", "due_date": "2025-05-26T23:55:00", "status": "unknown"}, {"name": "2ª ATIVIDADE AVALIATIVA", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=243085", "due_date": null, "status": "unknown"}, {"name": "TED - Como identificar um gráfico enganoso", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=230313", "due_date": null, "status": "unknown"}, {"name": "TED - Três maneiras de detectar erros estatísticos", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=230314", "due_date": null, "status": "unknown"}, {"name": "Caso - Coronavírus - Bolem Diário", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=230315", "due_date": null, "status": "unknown"}, {"name": "Qual gráfico é o melhor para você?", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=230316", "due_date": null, "status": "unknown"}, {"name": "Por que usar análises visuais?", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=230317", "due_date": null, "status": "unknown"}, {"name": "4 razões pelas quais já não pode abdicar da visualização de dados", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=230318", "due_date": null, "status": "unknown"}, {"name": "As cinco visualizações mais influentes de todos os tempos", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=230319", "due_date": null, "status": "unknown"}, {"name": "Estatística no Cinema: A Era dos Dados", "type": "link", "url": "https://moodle.osorio.ifrs.edu.br/mod/url/view.php?id=230320", "due_date": null, "status": "unknown"}, {"name": "Exemplos de Relatórios Estatísticos - Nº 1", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=230321", "due_date": null, "status": "unknown"}, {"name": "Exemplos de Relatórios Estatísticos - Nº 2", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=230322", "due_date": null, "status": "unknown"}, {"name": "Slides_1", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=230323", "due_date": null, "status": "unknown"}, {"name": "Slides - Estatística Descritiva", "type": "resource", "url": "https://moodle.osorio.ifrs.edu.br/mod/resource/view.php?id=230324", "due_date": null, "status": "unknown"}]}]};
+    const NOW = new Date();
+    const MS_DAY = 86400000;
+
+    const COURSE_COLORS = ['#6c9cfc','#a78bfa','#f472b6','#4ade80','#fb923c','#fbbf24','#2dd4bf','#f87171','#818cf8','#e879f9'];
+    const courseColorMap = {};
+    DATA.courses.forEach((c, i) => { courseColorMap[c.id] = COURSE_COLORS[i % COURSE_COLORS.length]; });
+
+    const ACTIONABLE_TYPES = new Set(['assignment', 'quiz', 'choice', 'feedback', 'workshop', 'lesson']);
+    const MATERIAL_TYPES = new Set(['resource', 'link', 'page', 'folder', 'glossary', 'wiki', 'database', 'other']);
+    const MATERIAL_ICONS = { resource: '📄', link: '🔗', page: '📝', folder: '📁', forum: '💬', glossary: '📖', wiki: '📚', database: '🗃️', other: '📎' };
+
+    // ── Data helpers ──
+
+    function getAllItems() {
+      const all = [];
+      DATA.courses.forEach(c => {
+        c.activities.forEach(a => {
+          all.push({ ...a, courseId: c.id, courseName: c.name, courseUrl: c.url });
+        });
+      });
+      return all;
+    }
+
+    function urgency(due) {
+      if (!due) return { key: 'nodate', label: '', cls: '' };
+      const diff = (new Date(due) - NOW) / MS_DAY;
+      if (diff < 0) return { key: 'past', label: 'Encerrada', cls: 'urgency-past' };
+      if (diff < 1) return { key: 'today', label: 'Hoje', cls: 'urgency-today' };
+      if (diff < 2) return { key: 'tomorrow', label: 'Amanha', cls: 'urgency-tomorrow' };
+      if (diff < 3) return { key: 'soon', label: `${Math.ceil(diff)}d`, cls: 'urgency-soon' };
+      if (diff < 7) return { key: 'week', label: `${Math.ceil(diff)}d`, cls: 'urgency-week' };
+      return { key: 'later', label: `${Math.ceil(diff)}d`, cls: 'urgency-later' };
+    }
+
+    function formatDateShort(iso) {
+      if (!iso) return 'Sem prazo';
+      return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    // ── Tabs ──
+
+    let activeTab = 'week';
+
+    function getTabCounts() {
+      const actionable = getAllItems().filter(a => ACTIONABLE_TYPES.has(a.type));
+      const materials = getAllItems().filter(a => MATERIAL_TYPES.has(a.type) || a.type === 'forum');
+      let all = 0, past = 0, week = 0, later = 0;
+      actionable.forEach(a => {
+        all++;
+        if (!a.due_date) { later++; return; }
+        const diff = (new Date(a.due_date) - NOW) / MS_DAY;
+        if (diff < 0) past++;
+        else if (diff < 7) week++;
+        else later++;
+      });
+      return { all, past, week, later, materials: materials.length };
+    }
+
+    function renderTabs() {
+      const c = getTabCounts();
+      const tabs = [
+        { id: 'all', label: 'Todas', count: c.all },
+        { id: 'week', label: 'Esta Semana', count: c.week },
+        { id: 'later', label: 'Mais Pra Frente', count: c.later },
+        { id: 'past', label: 'Passadas', count: c.past },
+        { id: 'materials', label: 'Materiais de Leitura', count: c.materials },
+      ];
+
+      document.getElementById('tabs').innerHTML = tabs.map(t =>
+        `<button class="tab${t.id === activeTab ? ' active' : ''}" data-tab="${t.id}">${t.label}<span class="count">${t.count}</span></button>`
+      ).join('');
+
+      document.querySelectorAll('.tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          activeTab = btn.dataset.tab;
+          renderTabs();
+          renderList();
+        });
+      });
+    }
+
+    // ── To-Do List ──
+
+    function renderList() {
+      const container = document.getElementById('listContainer');
+      const search = document.getElementById('searchInput').value.toLowerCase();
+
+      if (activeTab === 'materials') {
+        renderMaterials(container, search);
+        return;
+      }
+
+      let items = getAllItems().filter(a => ACTIONABLE_TYPES.has(a.type));
+
+      if (activeTab === 'all') {
+        // keeps all actionable items without date-based filtering
+      } else if (activeTab === 'past') {
+        items = items.filter(a => a.due_date && (new Date(a.due_date) - NOW) / MS_DAY < 0);
+      } else if (activeTab === 'week') {
+        items = items.filter(a => {
+          if (!a.due_date) return false;
+          const diff = (new Date(a.due_date) - NOW) / MS_DAY;
+          return diff >= 0 && diff < 7;
+        });
+      } else {
+        items = items.filter(a => {
+          if (!a.due_date) return true;
+          return (new Date(a.due_date) - NOW) / MS_DAY >= 7;
+        });
+      }
+
+      if (search) items = items.filter(a =>
+        a.name.toLowerCase().includes(search) || a.courseName.toLowerCase().includes(search)
+      );
+
+      items.sort((a, b) => {
+        if (!a.due_date && !b.due_date) return 0;
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date) - new Date(b.due_date);
+      });
+
+      if (items.length === 0) {
+        const emptyMsg = {
+          all: 'Nenhuma entrega encontrada.',
+          week: 'Nenhuma entrega esta semana. Aproveite para adiantar!',
+          later: 'Nenhuma entrega futura encontrada.',
+          past: 'Nenhuma entrega com prazo encerrado.',
+        }[activeTab] || 'Nenhuma entrega nesta faixa.';
+        container.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
+        return;
+      }
+
+      container.innerHTML = `<ul class="todo-list">${items.map(a => {
+        const u = urgency(a.due_date);
+        const deadlineColor = { past: 'var(--text-dim)', today: 'var(--red)', tomorrow: 'var(--orange)', soon: 'var(--orange)', week: 'var(--yellow)', later: 'var(--green)', nodate: 'var(--text-dim)' }[u.key];
+        return `<li class="todo-item">
+          <div class="todo-body">
+            <div class="todo-title">
+              <a href="${a.url}" target="_blank" rel="noopener">${a.name}</a>
+              ${u.label ? `<span class="todo-urgency ${u.cls}">${u.label}</span>` : ''}
+            </div>
+            <div class="todo-meta">
+              <span>${a.courseName}</span>
+              <span>${a.type === 'assignment' ? 'Tarefa' : a.type === 'quiz' ? 'Questionario' : a.type.charAt(0).toUpperCase() + a.type.slice(1)}</span>
+            </div>
+          </div>
+          <div class="todo-deadline" style="color:${deadlineColor}">${formatDateShort(a.due_date)}</div>
+        </li>`;
+      }).join('')}</ul>`;
+    }
+
+    // ── Materials ──
+
+    function renderMaterials(container, search) {
+      let html = '';
+      DATA.courses.forEach(c => {
+        let items = c.activities.filter(a => MATERIAL_TYPES.has(a.type) || a.type === 'forum');
+        if (search) items = items.filter(a => a.name.toLowerCase().includes(search) || c.name.toLowerCase().includes(search));
+        if (items.length === 0) return;
+
+        html += `<div class="materials-group"><h3>${c.name}</h3>`;
+        items.forEach(a => {
+          const icon = MATERIAL_ICONS[a.type] || '📎';
+          html += `<div class="material-item">
+            <span class="material-icon">${icon}</span>
+            <div class="material-name"><a href="${a.url}" target="_blank" rel="noopener">${a.name}</a></div>
+          </div>`;
+        });
+        html += `</div>`;
+      });
+
+      container.innerHTML = html || '<div class="empty-state">Nenhum material encontrado.</div>';
+    }
+
+    // ── Calendar ──
+
+    function renderCalendar() {
+      const events = [];
+      DATA.courses.forEach(c => {
+        c.activities.forEach(a => {
+          if (a.due_date) {
+            events.push({
+              title: a.name,
+              start: a.due_date.substring(0, 10), // data apenas — evita overflow de meia-noite
+              allDay: true,
+              url: a.url,
+              color: courseColorMap[c.id],
+              extendedProps: { course: c.name, dueDate: a.due_date },
+            });
+          }
+        });
+      });
+
+      const initialView = window.innerWidth < 800 ? 'listWeek' : 'dayGridMonth';
+
+      const cal = new FullCalendar.Calendar(document.getElementById('calendar'), {
+        initialView,
+        locale: 'pt-br',
+        height: 'auto',
+        headerToolbar: { left: 'prev,next', center: 'title', right: '' },
+        displayEventTime: false,
+        eventDisplay: 'block',
+        events,
+        eventClick(info) {
+          if (info.event.url) { info.jsEvent.preventDefault(); window.open(info.event.url, '_blank'); }
+        },
+        eventDidMount(info) {
+          const due = new Date(info.event.extendedProps.dueDate);
+          const timeStr = due.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          info.el.title = `${info.event.extendedProps.course}: ${info.event.title} (até ${timeStr})`;
+        },
+        windowResize(arg) {
+          const view = arg.view.calendar.el.offsetWidth < 800 ? 'listWeek' : 'dayGridMonth';
+          if (arg.view.type !== view) arg.view.calendar.changeView(view);
+        },
+      });
+      cal.render();
+
+      document.getElementById('calendarLegend').innerHTML = DATA.courses.map(c =>
+        `<span class="legend-item"><span class="legend-dot" style="background:${courseColorMap[c.id]}"></span><span>${c.name}</span></span>`
+      ).join('');
+    }
+
+    // ── Init ──
+
+    document.getElementById('searchInput').addEventListener('input', () => renderList());
+
+    renderTabs();
+    renderList();
+    renderCalendar();
+  </script>
+</body>
+</html>

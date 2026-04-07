@@ -1,0 +1,8 @@
+services:
+  worker:
+    build: .
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
+    restart: "no"

@@ -1,0 +1,18 @@
+# Credenciais — NUNCA subir
+.env
+data/session.json
+
+# Dados scraped (contêm URLs internas do Moodle)
+data/courses.json
+
+# Output local (o deploy usa docs/index.html)
+output/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Claude Code
+.claude/

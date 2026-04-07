@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tarefas Moodle - TPG/IFRS</title>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #252830;
+      --surface3: #2f323c;
+      --border: #363944;
+      --text: #e4e5e9;
+      --text-secondary: #9ca0ae;
+      --text-dim: #6b7084;
+      --accent: #6c9cfc;
+      --red: #f87171;
+      --red-dim: #f8717122;
+      --orange: #fb923c;
+      --orange-dim: #fb923c22;
+      --yellow: #fbbf24;
+      --yellow-dim: #fbbf2422;
+      --green: #4ade80;
+      --green-dim: #4ade8022;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+
+    .app {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      grid-template-rows: auto 1fr;
+      gap: 0;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .topbar h1 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .topbar .meta {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    .main {
+      padding: 24px 28px;
+      overflow-y: auto;
+    }
+
+    .sidebar {
+      border-left: 1px solid var(--border);
+      padding: 24px 20px;
+      overflow-y: auto;
+      background: var(--surface);
+    }
+
+    @media (max-width: 1080px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+      }
+      .sidebar {
+        border-left: none;
+        border-top: 1px solid var(--border);
+      }
+    }
+
+    /* ── Tab Bar ── */
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 7px 18px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .tab:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .tab .count {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: rgba(255,255,255,0.15);
+    }
+
+    .tab:not(.active) .count {
+      background: var(--surface3);
+      color: var(--text-dim);
+    }
+
+    /* ── Search ── */
+
+    .search-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .search-input:focus { border-color: var(--accent); }
+
+    /* ── To-Do Items ── */
+
+    .todo-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .todo-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      transition: background 0.12s;
+      cursor: default;
+    }
+
+    .todo-item:hover { background: var(--surface); }
+
+    .todo-body { flex: 1; min-width: 0; }
+
+    .todo-title {
+      font-size: 0.9rem;
+      font-weight: 500;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .todo-title a {
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .todo-title a:hover { color: var(--accent); text-decoration: underline; }
+
+    .todo-urgency {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      flex-shrink: 0;
+    }
+
+    .urgency-past { background: var(--surface3); color: var(--text-dim); }
+    .urgency-today { background: var(--red-dim); color: var(--red); }
+    .urgency-tomorrow { background: var(--orange-dim); color: var(--orange); }
+    .urgency-soon { background: var(--orange-dim); color: var(--orange); }
+    .urgency-week { background: var(--yellow-dim); color: var(--yellow); }
+    .urgency-later { background: var(--green-dim); color: var(--green); }
+
+    .todo-meta {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      margin-top: 2px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .todo-deadline {
+      font-size: 0.8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      margin-top: 2px;
+      padding-left: 8px;
+      flex-shrink: 0;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 16px;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    /* ── Section headers ── */
+
+    .section-header {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      padding: 16px 0 8px 14px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+
+    .section-header:first-child { padding-top: 0; }
+
+    /* ── Materials ── */
+
+    .materials-group {
+      margin-bottom: 20px;
+    }
+
+    .materials-group h3 {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: 12px 0 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 6px;
+    }
+
+    .material-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      transition: background 0.12s;
+    }
+
+    .material-item:hover { background: var(--surface); }
+
+    .material-icon {
+      font-size: 0.85rem;
+      width: 20px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .material-name {
+      font-size: 0.85rem;
+      flex: 1;
+    }
+
+    .material-name a {
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+
+    .material-name a:hover { color: var(--accent); }
+
+    /* ── Calendar sidebar ── */
+
+    .sidebar h2 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+    }
+
+    .fc {
+      --fc-bg-event-opacity: 0.9;
+      --fc-border-color: var(--border);
+      --fc-page-bg-color: var(--surface);
+      --fc-neutral-bg-color: var(--surface2);
+      --fc-today-bg-color: rgba(108, 156, 252, 0.08);
+      --fc-event-text-color: #fff;
+    }
+
+    .fc .fc-toolbar { margin-bottom: 8px !important; }
+    .fc .fc-toolbar-title { color: var(--text); font-size: 0.9rem !important; }
+    .fc .fc-button {
+      background: var(--surface2) !important;
+      border-color: var(--border) !important;
+      color: var(--text-secondary) !important;
+      font-size: 0.75rem !important;
+      padding: 2px 8px !important;
+    }
+    .fc .fc-button:hover { background: var(--surface3) !important; }
+    .fc .fc-button-active { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
+    .fc th { color: var(--text-dim); font-size: 0.7rem; padding: 4px 0 !important; }
+    .fc td { border-color: var(--border); }
+    .fc .fc-daygrid-day-number { color: var(--text-secondary); font-size: 0.75rem; padding: 2px 4px !important; }
+    .fc .fc-col-header-cell { background: var(--surface2); }
+    .fc .fc-daygrid-day-frame { min-height: 48px !important; }
+    .fc .fc-event { font-size: 0.65rem !important; padding: 1px 3px !important; border-radius: 3px !important; }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 6px 10px;
+      margin: 14px 0 0;
+      font-size: 0.72rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-dim);
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .legend-item span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    @media (max-width: 800px) {
+      .legend {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Scrollbars ── */
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <h1>Tarefas Moodle - TPG/IFRS</h1>
+      <span class="meta">Atualizado em {{ last_updated }}</span>
+    </div>
+
+    <div class="main">
+      <div class="tabs" id="tabs"></div>
+
+      <div class="search-row">
+        <input type="text" class="search-input" id="searchInput" placeholder="Buscar atividade ou materia...">
+      </div>
+
+      <div id="listContainer"></div>
+    </div>
+
+    <div class="sidebar">
+      <h2>Calendario</h2>
+      <div id="calendar"></div>
+      <div class="legend" id="calendarLegend"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales/pt-br.global.min.js"></script>
+  <script>
+    const DATA = {{ data_json }};
+    const NOW = new Date();
+    const MS_DAY = 86400000;
+
+    const COURSE_COLORS = ['#6c9cfc','#a78bfa','#f472b6','#4ade80','#fb923c','#fbbf24','#2dd4bf','#f87171','#818cf8','#e879f9'];
+    const courseColorMap = {};
+    DATA.courses.forEach((c, i) => { courseColorMap[c.id] = COURSE_COLORS[i % COURSE_COLORS.length]; });
+
+    const ACTIONABLE_TYPES = new Set(['assignment', 'quiz', 'choice', 'feedback', 'workshop', 'lesson']);
+    const MATERIAL_TYPES = new Set(['resource', 'link', 'page', 'folder', 'glossary', 'wiki', 'database', 'other']);
+    const MATERIAL_ICONS = { resource: '📄', link: '🔗', page: '📝', folder: '📁', forum: '💬', glossary: '📖', wiki: '📚', database: '🗃️', other: '📎' };
+
+    // ── Data helpers ──
+
+    function getAllItems() {
+      const all = [];
+      DATA.courses.forEach(c => {
+        c.activities.forEach(a => {
+          all.push({ ...a, courseId: c.id, courseName: c.name, courseUrl: c.url });
+        });
+      });
+      return all;
+    }
+
+    function urgency(due) {
+      if (!due) return { key: 'nodate', label: '', cls: '' };
+      const diff = (new Date(due) - NOW) / MS_DAY;
+      if (diff < 0) return { key: 'past', label: 'Encerrada', cls: 'urgency-past' };
+      if (diff < 1) return { key: 'today', label: 'Hoje', cls: 'urgency-today' };
+      if (diff < 2) return { key: 'tomorrow', label: 'Amanha', cls: 'urgency-tomorrow' };
+      if (diff < 3) return { key: 'soon', label: `${Math.ceil(diff)}d`, cls: 'urgency-soon' };
+      if (diff < 7) return { key: 'week', label: `${Math.ceil(diff)}d`, cls: 'urgency-week' };
+      return { key: 'later', label: `${Math.ceil(diff)}d`, cls: 'urgency-later' };
+    }
+
+    function formatDateShort(iso) {
+      if (!iso) return 'Sem prazo';
+      return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    // ── Tabs ──
+
+    let activeTab = 'week';
+
+    function getTabCounts() {
+      const actionable = getAllItems().filter(a => ACTIONABLE_TYPES.has(a.type));
+      const materials = getAllItems().filter(a => MATERIAL_TYPES.has(a.type) || a.type === 'forum');
+      let all = 0, past = 0, week = 0, later = 0;
+      actionable.forEach(a => {
+        all++;
+        if (!a.due_date) { later++; return; }
+        const diff = (new Date(a.due_date) - NOW) / MS_DAY;
+        if (diff < 0) past++;
+        else if (diff < 7) week++;
+        else later++;
+      });
+      return { all, past, week, later, materials: materials.length };
+    }
+
+    function renderTabs() {
+      const c = getTabCounts();
+      const tabs = [
+        { id: 'all', label: 'Todas', count: c.all },
+        { id: 'week', label: 'Esta Semana', count: c.week },
+        { id: 'later', label: 'Mais Pra Frente', count: c.later },
+        { id: 'past', label: 'Passadas', count: c.past },
+        { id: 'materials', label: 'Materiais de Leitura', count: c.materials },
+      ];
+
+      document.getElementById('tabs').innerHTML = tabs.map(t =>
+        `<button class="tab${t.id === activeTab ? ' active' : ''}" data-tab="${t.id}">${t.label}<span class="count">${t.count}</span></button>`
+      ).join('');
+
+      document.querySelectorAll('.tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          activeTab = btn.dataset.tab;
+          renderTabs();
+          renderList();
+        });
+      });
+    }
+
+    // ── To-Do List ──
+
+    function renderList() {
+      const container = document.getElementById('listContainer');
+      const search = document.getElementById('searchInput').value.toLowerCase();
+
+      if (activeTab === 'materials') {
+        renderMaterials(container, search);
+        return;
+      }
+
+      let items = getAllItems().filter(a => ACTIONABLE_TYPES.has(a.type));
+
+      if (activeTab === 'all') {
+        // keeps all actionable items without date-based filtering
+      } else if (activeTab === 'past') {
+        items = items.filter(a => a.due_date && (new Date(a.due_date) - NOW) / MS_DAY < 0);
+      } else if (activeTab === 'week') {
+        items = items.filter(a => {
+          if (!a.due_date) return false;
+          const diff = (new Date(a.due_date) - NOW) / MS_DAY;
+          return diff >= 0 && diff < 7;
+        });
+      } else {
+        items = items.filter(a => {
+          if (!a.due_date) return true;
+          return (new Date(a.due_date) - NOW) / MS_DAY >= 7;
+        });
+      }
+
+      if (search) items = items.filter(a =>
+        a.name.toLowerCase().includes(search) || a.courseName.toLowerCase().includes(search)
+      );
+
+      items.sort((a, b) => {
+        if (!a.due_date && !b.due_date) return 0;
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date) - new Date(b.due_date);
+      });
+
+      if (items.length === 0) {
+        const emptyMsg = {
+          all: 'Nenhuma entrega encontrada.',
+          week: 'Nenhuma entrega esta semana. Aproveite para adiantar!',
+          later: 'Nenhuma entrega futura encontrada.',
+          past: 'Nenhuma entrega com prazo encerrado.',
+        }[activeTab] || 'Nenhuma entrega nesta faixa.';
+        container.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
+        return;
+      }
+
+      container.innerHTML = `<ul class="todo-list">${items.map(a => {
+        const u = urgency(a.due_date);
+        const deadlineColor = { past: 'var(--text-dim)', today: 'var(--red)', tomorrow: 'var(--orange)', soon: 'var(--orange)', week: 'var(--yellow)', later: 'var(--green)', nodate: 'var(--text-dim)' }[u.key];
+        return `<li class="todo-item">
+          <div class="todo-body">
+            <div class="todo-title">
+              <a href="${a.url}" target="_blank" rel="noopener">${a.name}</a>
+              ${u.label ? `<span class="todo-urgency ${u.cls}">${u.label}</span>` : ''}
+            </div>
+            <div class="todo-meta">
+              <span>${a.courseName}</span>
+              <span>${a.type === 'assignment' ? 'Tarefa' : a.type === 'quiz' ? 'Questionario' : a.type.charAt(0).toUpperCase() + a.type.slice(1)}</span>
+            </div>
+          </div>
+          <div class="todo-deadline" style="color:${deadlineColor}">${formatDateShort(a.due_date)}</div>
+        </li>`;
+      }).join('')}</ul>`;
+    }
+
+    // ── Materials ──
+
+    function renderMaterials(container, search) {
+      let html = '';
+      DATA.courses.forEach(c => {
+        let items = c.activities.filter(a => MATERIAL_TYPES.has(a.type) || a.type === 'forum');
+        if (search) items = items.filter(a => a.name.toLowerCase().includes(search) || c.name.toLowerCase().includes(search));
+        if (items.length === 0) return;
+
+        html += `<div class="materials-group"><h3>${c.name}</h3>`;
+        items.forEach(a => {
+          const icon = MATERIAL_ICONS[a.type] || '📎';
+          html += `<div class="material-item">
+            <span class="material-icon">${icon}</span>
+            <div class="material-name"><a href="${a.url}" target="_blank" rel="noopener">${a.name}</a></div>
+          </div>`;
+        });
+        html += `</div>`;
+      });
+
+      container.innerHTML = html || '<div class="empty-state">Nenhum material encontrado.</div>';
+    }
+
+    // ── Calendar ──
+
+    function renderCalendar() {
+      const events = [];
+      DATA.courses.forEach(c => {
+        c.activities.forEach(a => {
+          if (a.due_date) {
+            events.push({
+              title: a.name,
+              start: a.due_date.substring(0, 10), // data apenas — evita overflow de meia-noite
+              allDay: true,
+              url: a.url,
+              color: courseColorMap[c.id],
+              extendedProps: { course: c.name, dueDate: a.due_date },
+            });
+          }
+        });
+      });
+
+      const initialView = window.innerWidth < 800 ? 'listWeek' : 'dayGridMonth';
+
+      const cal = new FullCalendar.Calendar(document.getElementById('calendar'), {
+        initialView,
+        locale: 'pt-br',
+        height: 'auto',
+        headerToolbar: { left: 'prev,next', center: 'title', right: '' },
+        displayEventTime: false,
+        eventDisplay: 'block',
+        events,
+        eventClick(info) {
+          if (info.event.url) { info.jsEvent.preventDefault(); window.open(info.event.url, '_blank'); }
+        },
+        eventDidMount(info) {
+          const due = new Date(info.event.extendedProps.dueDate);
+          const timeStr = due.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          info.el.title = `${info.event.extendedProps.course}: ${info.event.title} (até ${timeStr})`;
+        },
+        windowResize(arg) {
+          const view = arg.view.calendar.el.offsetWidth < 800 ? 'listWeek' : 'dayGridMonth';
+          if (arg.view.type !== view) arg.view.calendar.changeView(view);
+        },
+      });
+      cal.render();
+
+      document.getElementById('calendarLegend').innerHTML = DATA.courses.map(c =>
+        `<span class="legend-item"><span class="legend-dot" style="background:${courseColorMap[c.id]}"></span><span>${c.name}</span></span>`
+      ).join('');
+    }
+
+    // ── Init ──
+
+    document.getElementById('searchInput').addEventListener('input', () => renderList());
+
+    renderTabs();
+    renderList();
+    renderCalendar();
+  </script>
+</body>
+</html>
