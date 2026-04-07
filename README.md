@@ -48,3 +48,14 @@ Agora o scraper so roda 1 vez por dia (baseado em `data/courses.json` -> `last_u
 FORCE_SCRAPE=1
 ```
 
+# Github Pages 
+
+Como publicar:
+
+```
+git add docs/index.html
+git commit -m "Atualiza dashboard"
+git push
+```
+
+O GitHub Pages atualiza automaticamente após o push (leva ~1 min).
