@@ -67,7 +67,7 @@
 
     .app {
       display: grid;
-      grid-template-columns: 1fr 340px;
+      grid-template-columns: 1fr 8px var(--sidebar-width, 340px);
       grid-template-rows: auto 1fr auto;
       gap: 0;
       min-height: 100vh;
@@ -102,21 +102,59 @@
     }
 
     .sidebar {
-      border-left: 1px solid var(--border);
       padding: 24px 20px;
       overflow-y: auto;
       background: var(--surface);
+      min-width: 0;
     }
+
+    /* ── Draggable divider ── */
+
+    .divider {
+      cursor: col-resize;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    .divider::before {
+      content: '';
+      position: absolute;
+      top: 0; bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1px;
+      background: var(--border);
+      transition: background 0.2s;
+      pointer-events: none;
+    }
+
+    .divider::after {
+      content: '';
+      width: 3px;
+      height: 32px;
+      border-radius: 3px;
+      background: var(--text-dim);
+      opacity: 0;
+      transition: opacity 0.2s, background 0.2s;
+      pointer-events: none;
+    }
+
+    .divider:hover::before,
+    .divider.dragging::before { background: var(--accent); }
+
+    .divider:hover::after { opacity: 0.45; }
+    .divider.dragging::after { opacity: 1; background: var(--accent); }
 
     @media (max-width: 1080px) {
       .app {
         grid-template-columns: 1fr;
         grid-template-rows: auto 1fr auto;
       }
-      .sidebar {
-        border-left: none;
-        border-top: 1px solid var(--border);
-      }
+      .divider { display: none; }
+      .sidebar { border-top: 1px solid var(--border); }
     }
 
     /* ── Tab Bar ── */
@@ -507,6 +545,8 @@
       <div id="listContainer"></div>
     </div>
 
+    <div class="divider" id="divider"></div>
+
     <div class="sidebar">
       <div class="sidebar-header">
         <h2>Calendario</h2>
@@ -768,6 +808,58 @@
         `<span class="legend-item"><span class="legend-dot" style="background:${courseColorMap[c.id]}"></span><span>${c.name}</span></span>`
       ).join('');
     }
+
+    // ── Draggable divider ──
+
+    (function () {
+      const divider = document.getElementById('divider');
+      const root = document.documentElement;
+      const MIN_WIDTH = 220;
+      const MAX_RATIO = 0.55;
+
+      function setSidebarWidth(w) {
+        const max = window.innerWidth * MAX_RATIO;
+        const clamped = Math.max(MIN_WIDTH, Math.min(max, w));
+        root.style.setProperty('--sidebar-width', clamped + 'px');
+        return clamped;
+      }
+
+      function getSidebarWidth() {
+        return parseFloat(getComputedStyle(root).getPropertyValue('--sidebar-width')) || 340;
+      }
+
+      const saved = localStorage.getItem('sidebarWidth');
+      if (saved) setSidebarWidth(parseFloat(saved));
+
+      let dragging = false;
+      let startX = 0;
+      let startWidth = 0;
+
+      divider.addEventListener('mousedown', (e) => {
+        dragging = true;
+        startX = e.clientX;
+        startWidth = getSidebarWidth();
+        divider.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const w = setSidebarWidth(startWidth + (startX - e.clientX));
+        localStorage.setItem('sidebarWidth', w);
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false;
+        divider.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        if (calInstance) calInstance.updateSize();
+      });
+    })();
 
     // ── Theme toggle ──
 
