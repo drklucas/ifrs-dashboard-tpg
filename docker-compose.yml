@@ -4,5 +4,5 @@ services:
     env_file: .env
     volumes:
       - ./data:/app/data
-      - ./output:/app/output
+      - ./docs:/app/docs
     restart: "no"
